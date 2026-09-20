@@ -68,6 +68,17 @@ abstract class AbstractSpringAiClassifier implements AiClassifier {
         return model;
     }
 
+    /**
+     * Construye el prompt de la solicitud. Los proveedores que necesiten
+     * opciones por petición pueden sobrescribir este método.
+     */
+    protected Prompt createPrompt(String description) {
+        return new Prompt(List.of(
+                new SystemMessage(prompts.systemPrompt()),
+                new UserMessage(prompts.userPrompt(description))
+        ));
+    }
+
     @Override
     public AiClassification classify(String description) {
         long started = System.nanoTime();
@@ -75,12 +86,7 @@ abstract class AbstractSpringAiClassifier implements AiClassifier {
         ChatResponse response;
 
         try {
-            var prompt = new Prompt(List.of(
-                    new SystemMessage(prompts.systemPrompt()),
-                    new UserMessage(prompts.userPrompt(description))
-            ));
-
-            response = chatModel.call(prompt);
+            response = chatModel.call(createPrompt(description));
 
         } catch (Exception ex) {
             return error(started, ex);
