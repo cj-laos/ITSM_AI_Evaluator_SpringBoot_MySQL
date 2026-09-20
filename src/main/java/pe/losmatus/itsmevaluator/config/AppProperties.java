@@ -57,6 +57,7 @@ public record AppProperties(
         String apiKey,
         String model,
         Integer maxOutputTokens,
+        boolean cacheEnabled,
         BigDecimal inputUsdPerMillion,
         BigDecimal cacheReadUsdPerMillion,
         BigDecimal cacheWriteUsdPerMillion,
