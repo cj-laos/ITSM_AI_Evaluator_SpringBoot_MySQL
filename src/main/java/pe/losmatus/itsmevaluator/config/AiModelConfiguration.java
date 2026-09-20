@@ -5,6 +5,10 @@ import java.util.Locale;
 import org.springframework.ai.anthropic.AnthropicChatModel;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.anthropic.api.AnthropicApi;
+import org.springframework.ai.anthropic.api.AnthropicCacheOptions;
+import org.springframework.ai.anthropic.api.AnthropicCacheStrategy;
+import org.springframework.ai.anthropic.api.AnthropicCacheTtl;
+import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.google.genai.GoogleGenAiChatModel;
 import org.springframework.ai.google.genai.GoogleGenAiChatOptions;
@@ -96,26 +100,37 @@ public class AiModelConfiguration {
     }
 
     @Bean
-@Qualifier("claudeChatModel")
-@ConditionalOnProperty(
-        name = "app.providers.claude.enabled",
-        havingValue = "true"
-)
-ChatModel claudeChatModel(AppProperties properties) {
-    var config = properties.providers().claude();
+    @Qualifier("claudeChatModel")
+    @ConditionalOnProperty(
+            name = "app.providers.claude.enabled",
+            havingValue = "true"
+    )
+    ChatModel claudeChatModel(AppProperties properties) {
+        var config = properties.providers().claude();
 
-    var api = AnthropicApi.builder()
-            .apiKey(config.apiKey())
-            .build();
+        var api = AnthropicApi.builder()
+                .apiKey(config.apiKey())
+                .build();
 
-    var options = AnthropicChatOptions.builder()
-            .model(config.model())
-            .maxTokens(config.maxOutputTokens())
-            .build();
+        var optionsBuilder = AnthropicChatOptions.builder()
+                .model(config.model())
+                .maxTokens(config.maxOutputTokens());
 
-    return AnthropicChatModel.builder()
-            .anthropicApi(api)
-            .defaultOptions(options)
-            .build();
-}
+        if (config.cacheEnabled()) {
+            optionsBuilder.cacheOptions(
+                    AnthropicCacheOptions.builder()
+                            .strategy(AnthropicCacheStrategy.SYSTEM_ONLY)
+                            .messageTypeTtl(
+                                    MessageType.SYSTEM,
+                                    AnthropicCacheTtl.FIVE_MINUTES
+                            )
+                            .build()
+            );
+        }
+
+        return AnthropicChatModel.builder()
+                .anthropicApi(api)
+                .defaultOptions(optionsBuilder.build())
+                .build();
+    }
 }
