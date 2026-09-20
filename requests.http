@@ -1,0 +1,147 @@
+@baseUrl = http://localhost:8080
+@datasetId = 1
+@runId = 1
+
+### Salud
+GET {{baseUrl}}/actuator/health
+
+### Proveedores habilitados
+GET {{baseUrl}}/api/evaluations/providers
+
+### Prueba de humo de un proveedor (no se persiste)
+POST {{baseUrl}}/api/classifications
+Content-Type: application/json
+
+{
+  "provider": "OPENAI",
+  "description": "La impresora de logística no enciende; las demás áreas trabajan con normalidad."
+}
+
+### Datasets
+GET {{baseUrl}}/api/datasets
+
+### Importar XLSX
+POST {{baseUrl}}/api/datasets/import?name=LOSMATUS&version=v1.0&description=Dataset%20validado
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="file"; filename="Dataset_Corregido_Tesis_LOSMATUS.xlsx"
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+< ./sample-data/Dataset_Corregido_Tesis_LOSMATUS.xlsx
+--boundary--
+
+### Partición estratificada
+POST {{baseUrl}}/api/datasets/{{datasetId}}/split
+Content-Type: application/json
+
+{
+  "trainRatio": 0.6,
+  "validationRatio": 0.1,
+  "testRatio": 0.3,
+  "seed": 20260720
+}
+
+### Ejecutar comparación
+POST {{baseUrl}}/api/evaluations/comparisons
+Content-Type: application/json
+
+{
+  "datasetId": {{datasetId}},
+  "split": "TEST",
+  "providers": ["OPENAI", "GEMINI", "CLAUDE"]
+}
+
+### Exportar TRAIN canónico
+GET {{baseUrl}}/api/datasets/{{datasetId}}/fine-tuning/canonical.jsonl?split=TRAIN
+
+### Exportar TRAIN para fine-tuning de OpenAI
+GET {{baseUrl}}/api/datasets/{{datasetId}}/fine-tuning/openai.jsonl?split=TRAIN
+
+### Estado
+GET {{baseUrl}}/api/evaluations/{{runId}}
+
+### Resultados por ticket
+GET {{baseUrl}}/api/evaluations/{{runId}}/results
+
+### Métricas
+GET {{baseUrl}}/api/evaluations/{{runId}}/metrics
+
+### Reanudar
+POST {{baseUrl}}/api/evaluations/{{runId}}/resume
+
+### Fase 2: consultar técnicos y niveles por categoría
+GET {{baseUrl}}/api/assignments/configuration/technicians
+
+### Fase 2: consultar pesos parametrizables
+GET {{baseUrl}}/api/assignments/configuration/policies/controlled-simulation-v2
+
+### Fase 2: consultar afinidad mínima por severidad
+GET {{baseUrl}}/api/assignments/configuration/policies/controlled-simulation-v2/thresholds
+
+### Fase 2: modificar nivel de un técnico (0 a 4)
+PUT {{baseUrl}}/api/assignments/configuration/technicians/1/skills/1
+Content-Type: application/json
+
+{
+  "level": 4,
+  "validatedBy": "Responsable técnico LOSMATUS"
+}
+
+### Fase 2: modificar pesos de severidad alta (deben sumar 1)
+PUT {{baseUrl}}/api/assignments/configuration/policies/controlled-simulation-v2/severities/3
+Content-Type: application/json
+
+{
+  "affinity": 0.79,
+  "load": 0.21
+}
+
+### Fase 2: modificar afinidad mínima para severidad alta
+PUT {{baseUrl}}/api/assignments/configuration/policies/controlled-simulation-v2/thresholds/3
+Content-Type: application/json
+
+{
+  "minimumAffinity": 0.75
+}
+
+### Fase 2: simulación principal con carga cero y todos disponibles
+POST {{baseUrl}}/api/assignments/simulations
+Content-Type: application/json
+
+{
+  "evaluationRunId": {{runId}},
+  "policyVersion": "controlled-simulation-v2",
+  "strategy": "MULTICRITERIA",
+  "scenario": "E1_CARGA_CERO_TODOS_DISPONIBLES",
+  "availabilityOverrides": {
+    "TEC-001": true,
+    "TEC-002": true,
+    "TEC-003": true
+  },
+  "initialLoads": {
+    "TEC-001": 0,
+    "TEC-002": 0,
+    "TEC-003": 0
+  }
+}
+
+### Baseline por afinidad
+POST {{baseUrl}}/api/assignments/simulations
+Content-Type: application/json
+
+{
+  "evaluationRunId": {{runId}},
+  "strategy": "AFFINITY_ONLY",
+  "scenario": "BASELINE_AFINIDAD"
+}
+
+### Baseline round-robin
+POST {{baseUrl}}/api/assignments/simulations
+Content-Type: application/json
+
+{
+  "evaluationRunId": {{runId}},
+  "strategy": "ROUND_ROBIN",
+  "scenario": "BASELINE_ROUND_ROBIN"
+}
