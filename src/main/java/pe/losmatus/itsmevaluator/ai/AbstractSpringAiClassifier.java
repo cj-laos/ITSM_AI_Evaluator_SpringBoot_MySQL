@@ -9,6 +9,7 @@ import java.math.RoundingMode;
 import java.util.List;
 import java.util.Objects;
 
+import org.springframework.ai.anthropic.api.AnthropicApi;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.metadata.Usage;
@@ -198,6 +199,10 @@ abstract class AbstractSpringAiClassifier implements AiClassifier {
         int cacheRead = cacheReadTokens(usage);
         int cacheWrite = cacheWriteTokens(usage);
 
+        if (provider == AiProvider.CLAUDE) {
+            total = input + output + cacheRead + cacheWrite;
+        }
+
         return new TokenUsage(
                 input,
                 output,
@@ -227,6 +232,12 @@ abstract class AbstractSpringAiClassifier implements AiClassifier {
         }
 
         Object nativeUsage = usage.getNativeUsage();
+
+        if (nativeUsage instanceof AnthropicApi.Usage anthropicUsage
+                && anthropicUsage.cacheReadInputTokens() != null) {
+
+            return anthropicUsage.cacheReadInputTokens();
+        }
 
         if (nativeUsage instanceof OpenAiApi.Usage openAiUsage) {
             var promptDetails =
@@ -262,6 +273,12 @@ abstract class AbstractSpringAiClassifier implements AiClassifier {
 
         if (nativeUsage == null) {
             return 0;
+        }
+
+        if (nativeUsage instanceof AnthropicApi.Usage anthropicUsage
+                && anthropicUsage.cacheCreationInputTokens() != null) {
+
+            return anthropicUsage.cacheCreationInputTokens();
         }
 
         int nativeValue = reflectInt(
@@ -307,12 +324,14 @@ abstract class AbstractSpringAiClassifier implements AiClassifier {
     private BigDecimal estimateCost(
             TokenUsage usage
     ) {
-        int ordinaryInput = Math.max(
-                0,
-                usage.input()
-                        - usage.cacheRead()
-                        - usage.cacheWrite()
-        );
+        int ordinaryInput = provider == AiProvider.CLAUDE
+                ? usage.input()
+                : Math.max(
+                        0,
+                        usage.input()
+                                - usage.cacheRead()
+                                - usage.cacheWrite()
+                );
 
         return inputPrice
                 .multiply(BigDecimal.valueOf(ordinaryInput))
