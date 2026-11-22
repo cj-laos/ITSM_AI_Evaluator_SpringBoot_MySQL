@@ -1,0 +1,11 @@
+target/
+.idea/
+.vscode/
+*.iml
+.env
+*.log
+.DS_Store
+itsm-classifier-few-shot-v1.3-4shot-dataset-final.txt
+itsm-classifier-few-shot-v1.3-12shot-dataset-final.txt
+itsm-classifier-zero-shot-v1.3-dataset-final.txt
+sample-data/

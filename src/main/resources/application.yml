@@ -1,0 +1,82 @@
+spring:
+  config:
+    import: "optional:file:.env[.properties]"
+
+  application:
+    name: itsm-ai-evaluator
+
+  datasource:
+    url: "${DB_URL:jdbc:mysql://localhost:3306/itsm_ai_evaluatorV2?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}"
+    username: "${DB_USER:root}"
+    password: "${DB_PASSWORD:admin}"
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      "[hibernate.jdbc.time_zone]": UTC
+
+  flyway:
+    enabled: true
+    validate-migration-naming: true
+    locations: classpath:db/migration
+
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+          - metrics
+
+server:
+  port: "${SERVER_PORT:8080}"
+  shutdown: graceful
+
+app:
+  prompt:
+    resource: classpath:prompts/itsm-classifier-few-shot-v1.3-8shot-dataset-final.txt
+    version: itsm-classifier-few-shot-v1.3-8shot-dataset-final
+
+  execution:
+    thread-pool-size: "${EVALUATION_THREADS:3}"
+    max-attempts: "${EVALUATION_MAX_ATTEMPTS:3}"
+    retry-backoff-ms: "${EVALUATION_RETRY_BACKOFF_MS:1000}"
+
+  providers:
+    openai:
+      enabled: "${OPENAI_ENABLED:true}"
+      api-key: "${OPENAI_API_KEY:}"
+      model: "${OPENAI_MODEL:gpt-5.6}"
+      input-usd-per-million: "${OPENAI_INPUT_USD_PER_MILLION:5.00}"
+      cached-input-usd-per-million: "${OPENAI_CACHED_INPUT_USD_PER_MILLION:0.50}"
+      output-usd-per-million: "${OPENAI_OUTPUT_USD_PER_MILLION:30.00}"
+
+    gemini:
+      enabled: "${GEMINI_ENABLED:false}"
+      api-key: "${GEMINI_API_KEY:}"
+      model: "${GEMINI_MODEL:gemini-3.6-flash}"
+      thinking-level: "${GEMINI_THINKING_LEVEL:HIGH}"
+      max-output-tokens: "${GEMINI_MAX_OUTPUT_TOKENS:512}"
+      input-usd-per-million: "${GEMINI_INPUT_USD_PER_MILLION:1.50}"
+      cached-input-usd-per-million: "${GEMINI_CACHED_INPUT_USD_PER_MILLION:0.15}"
+      output-usd-per-million: "${GEMINI_OUTPUT_USD_PER_MILLION:7.50}"
+
+    claude:
+      enabled: "${CLAUDE_ENABLED:false}"
+      api-key: "${ANTHROPIC_API_KEY:}"
+      model: "${CLAUDE_MODEL:claude-sonnet-5}"
+      max-output-tokens: "${CLAUDE_MAX_OUTPUT_TOKENS:2048}"
+      cache-enabled: "${CLAUDE_CACHE_ENABLED:true}"
+      input-usd-per-million: "${CLAUDE_INPUT_USD_PER_MILLION:2.00}"
+      cache-read-usd-per-million: "${CLAUDE_CACHE_READ_USD_PER_MILLION:${CLAUDE_CACHED_INPUT_USD_PER_MILLION:0.20}}"
+      cache-write-usd-per-million: "${CLAUDE_CACHE_WRITE_USD_PER_MILLION:2.50}"
+      output-usd-per-million: "${CLAUDE_OUTPUT_USD_PER_MILLION:10.00}"
